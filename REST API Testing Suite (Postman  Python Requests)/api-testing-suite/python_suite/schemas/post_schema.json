@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Post",
+  "description": "JSON Schema Draft-07 definition for a JSONPlaceholder /posts resource.",
+  "type": "object",
+  "required": ["userId", "id", "title", "body"],
+  "additionalProperties": false,
+  "properties": {
+    "userId": {
+      "description": "ID of the user who authored this post.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "id": {
+      "description": "Unique identifier for the post.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "title": {
+      "description": "Title of the post.",
+      "type": "string",
+      "minLength": 1
+    },
+    "body": {
+      "description": "Body text of the post.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

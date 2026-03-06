@@ -1,0 +1,815 @@
+{
+  "info": {
+    "_postman_id": "c3f8a2d1-4b7e-4c9f-a0e5-1d2f3a4b5c6d",
+    "name": "JSONPlaceholder API Test Suite",
+    "description": "Comprehensive REST API test collection for the JSONPlaceholder public mock API (https://jsonplaceholder.typicode.com).\n\nCovers GET, POST, PUT, and DELETE operations with assertions for:\n- HTTP status codes\n- Response body field presence and values\n- JSON Schema structure validation\n- Response time SLA (< 2 000 ms)\n\nParallel implementation: python_suite/ using PyTest + Requests.\n\nImport this collection together with JSONPlaceholder_Environment.json before running.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "GET Tests",
+      "description": "Tests for all GET endpoints: /posts collection, single post, filtered posts, 404 handling, and /users.",
+      "item": [
+        {
+          "name": "GET All Posts — status 200, is list, non-empty",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Ensure the base_url variable is set before the request fires.",
+                  "if (!pm.environment.get('base_url')) {",
+                  "    pm.environment.set('base_url', 'https://jsonplaceholder.typicode.com');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response body is an array', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test('Array is not empty (length > 0)', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data.length).to.be.above(0);",
+                  "});",
+                  "",
+                  "pm.test('Response time is below 2000 ms', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/posts",
+              "host": ["{{base_url}}"],
+              "path": ["posts"]
+            },
+            "description": "Retrieves the full collection of posts. Validates status=200, response is a non-empty array, and response time SLA."
+          }
+        },
+        {
+          "name": "GET Single Post /posts/1 — required keys",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.environment.set('post_id', '1');"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains required keys: id, title, body, userId', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data).to.have.property('id');",
+                  "    pm.expect(data).to.have.property('title');",
+                  "    pm.expect(data).to.have.property('body');",
+                  "    pm.expect(data).to.have.property('userId');",
+                  "});",
+                  "",
+                  "pm.test('id field value equals 1', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data.id).to.eql(1);",
+                  "});",
+                  "",
+                  "pm.test('Response time is below 2000 ms', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/posts/{{post_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["posts", "{{post_id}}"]
+            },
+            "description": "Retrieves post with id=1. Validates status=200, presence of all required fields, and id value."
+          }
+        },
+        {
+          "name": "GET Single Post /posts/1 — schema validation",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.environment.set('post_id', '1');"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var postSchema = {",
+                  "    '$schema': 'http://json-schema.org/draft-07/schema#',",
+                  "    'title': 'Post',",
+                  "    'type': 'object',",
+                  "    'required': ['userId', 'id', 'title', 'body'],",
+                  "    'additionalProperties': false,",
+                  "    'properties': {",
+                  "        'userId': { 'type': 'integer', 'minimum': 1 },",
+                  "        'id':     { 'type': 'integer', 'minimum': 1 },",
+                  "        'title':  { 'type': 'string', 'minLength': 1 },",
+                  "        'body':   { 'type': 'string', 'minLength': 1 }",
+                  "    }",
+                  "};",
+                  "",
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response body matches post_schema (Draft-07)', function () {",
+                  "    pm.response.to.have.jsonSchema(postSchema);",
+                  "});",
+                  "",
+                  "pm.test('userId is an integer >= 1', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data.userId).to.be.a('number').and.to.be.above(0);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/posts/{{post_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["posts", "{{post_id}}"]
+            },
+            "description": "Validates the response body of GET /posts/1 against the inline post schema (mirrors post_schema.json Draft-07 definition)."
+          }
+        },
+        {
+          "name": "GET Non-existent Post /posts/9999 — 404",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": ["// No variables needed — ID is hard-coded as 9999."],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 404 for unknown resource', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test('Response time is below 2000 ms', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/posts/9999",
+              "host": ["{{base_url}}"],
+              "path": ["posts", "9999"]
+            },
+            "description": "Requests a post that does not exist. Expects HTTP 404 Not Found."
+          }
+        },
+        {
+          "name": "GET Posts Filtered ?userId=1 — all items have userId=1",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.environment.set('user_id', '1');"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is a non-empty array', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data).to.be.an('array').with.length.above(0);",
+                  "});",
+                  "",
+                  "pm.test('Every item has userId equal to 1', function () {",
+                  "    var data = pm.response.json();",
+                  "    data.forEach(function (post) {",
+                  "        pm.expect(post.userId).to.eql(1,",
+                  "            'Post id=' + post.id + ' has unexpected userId=' + post.userId);",
+                  "    });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/posts?userId={{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["posts"],
+              "query": [
+                { "key": "userId", "value": "{{user_id}}" }
+              ]
+            },
+            "description": "Retrieves posts filtered by userId=1. Every returned item must have userId=1."
+          }
+        },
+        {
+          "name": "GET User /users/1 — status 200",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.environment.set('user_id', '1');"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains top-level required fields', function () {",
+                  "    var data = pm.response.json();",
+                  "    ['id','name','username','email','address','phone','website','company'].forEach(function(key) {",
+                  "        pm.expect(data).to.have.property(key);",
+                  "    });",
+                  "});",
+                  "",
+                  "pm.test('Response time is below 2000 ms', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["users", "{{user_id}}"]
+            },
+            "description": "Retrieves user with id=1. Validates status=200 and all top-level required fields are present."
+          }
+        },
+        {
+          "name": "GET User /users/1 — schema validation",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.environment.set('user_id', '1');"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var userSchema = {",
+                  "    '$schema': 'http://json-schema.org/draft-07/schema#',",
+                  "    'title': 'User',",
+                  "    'type': 'object',",
+                  "    'required': ['id','name','username','email','address','phone','website','company'],",
+                  "    'properties': {",
+                  "        'id':       { 'type': 'integer', 'minimum': 1 },",
+                  "        'name':     { 'type': 'string' },",
+                  "        'username': { 'type': 'string' },",
+                  "        'email':    { 'type': 'string' },",
+                  "        'address': {",
+                  "            'type': 'object',",
+                  "            'required': ['street','suite','city','zipcode','geo'],",
+                  "            'properties': {",
+                  "                'street':  { 'type': 'string' },",
+                  "                'suite':   { 'type': 'string' },",
+                  "                'city':    { 'type': 'string' },",
+                  "                'zipcode': { 'type': 'string' },",
+                  "                'geo': {",
+                  "                    'type': 'object',",
+                  "                    'required': ['lat','lng'],",
+                  "                    'properties': {",
+                  "                        'lat': { 'type': 'string' },",
+                  "                        'lng': { 'type': 'string' }",
+                  "                    }",
+                  "                }",
+                  "            }",
+                  "        },",
+                  "        'phone':   { 'type': 'string' },",
+                  "        'website': { 'type': 'string' },",
+                  "        'company': {",
+                  "            'type': 'object',",
+                  "            'required': ['name','catchPhrase','bs'],",
+                  "            'properties': {",
+                  "                'name':         { 'type': 'string' },",
+                  "                'catchPhrase':  { 'type': 'string' },",
+                  "                'bs':           { 'type': 'string' }",
+                  "            }",
+                  "        }",
+                  "    }",
+                  "};",
+                  "",
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response body matches user_schema (Draft-07)', function () {",
+                  "    pm.response.to.have.jsonSchema(userSchema);",
+                  "});",
+                  "",
+                  "pm.test('Address contains geo with lat and lng', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data.address.geo).to.have.property('lat');",
+                  "    pm.expect(data.address.geo).to.have.property('lng');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["users", "{{user_id}}"]
+            },
+            "description": "Validates GET /users/1 response body against the inline user schema (mirrors user_schema.json Draft-07 definition)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "POST Tests",
+      "description": "Tests for POST /posts: valid payload, empty body, and auto-generated id.",
+      "item": [
+        {
+          "name": "POST /posts — valid payload, status 201, echoed fields",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Set the request body variables for this POST request.",
+                  "pm.environment.set('post_title', 'Test Post Title');",
+                  "pm.environment.set('post_body', 'This is the body content of the automated test post.');",
+                  "pm.environment.set('post_userId', 1);"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response echoes submitted title', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data.title).to.eql('Test Post Title');",
+                  "});",
+                  "",
+                  "pm.test('Response echoes submitted body', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data.body).to.eql('This is the body content of the automated test post.');",
+                  "});",
+                  "",
+                  "pm.test('Response echoes submitted userId', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data.userId).to.eql(1);",
+                  "});",
+                  "",
+                  "pm.test('Response time is below 2000 ms', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json; charset=UTF-8" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Test Post Title\",\n    \"body\": \"This is the body content of the automated test post.\",\n    \"userId\": 1\n}",
+              "options": {
+                "raw": { "language": "json" }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/posts",
+              "host": ["{{base_url}}"],
+              "path": ["posts"]
+            },
+            "description": "Creates a new post with a valid payload. Validates status=201 and all submitted fields are echoed back."
+          }
+        },
+        {
+          "name": "POST /posts — auto-generated id in response",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": ["// No variables needed."],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response contains an auto-generated integer id', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data).to.have.property('id');",
+                  "    pm.expect(data.id).to.be.a('number');",
+                  "    pm.expect(data.id).to.be.above(0);",
+                  "});",
+                  "",
+                  "// Store the returned id for potential chained requests.",
+                  "var createdId = pm.response.json().id;",
+                  "pm.environment.set('created_post_id', createdId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json; charset=UTF-8" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Auto ID Check Post\",\n    \"body\": \"Checking that server assigns an auto-generated id.\",\n    \"userId\": 2\n}",
+              "options": {
+                "raw": { "language": "json" }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/posts",
+              "host": ["{{base_url}}"],
+              "path": ["posts"]
+            },
+            "description": "Verifies that the server assigns an auto-generated numeric id to a newly created post. The id is stored as `created_post_id` environment variable."
+          }
+        },
+        {
+          "name": "POST /posts — empty body (documented mock behaviour)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// LIMITATION: JSONPlaceholder accepts any payload including empty.",
+                  "// A production API would return 400 Bad Request here."
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// DOCUMENTED LIMITATION: JSONPlaceholder is a mock API with no input",
+                  "// validation. It accepts an empty body and always returns HTTP 201.",
+                  "// A real production API should return HTTP 400 Bad Request when",
+                  "// required fields (title, body, userId) are absent.",
+                  "pm.test('Status code is 201 (mock API accepts empty body)', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response is a JSON object', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('object');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json; charset=UTF-8" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": { "language": "json" }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/posts",
+              "host": ["{{base_url}}"],
+              "path": ["posts"]
+            },
+            "description": "DOCUMENTED LIMITATION — sends an empty JSON body. JSONPlaceholder returns 201 regardless. A production API should return 400 Bad Request for missing required fields."
+          }
+        }
+      ]
+    },
+    {
+      "name": "PUT Tests",
+      "description": "Tests for PUT /posts/1: updated title echoed, response id matches route.",
+      "item": [
+        {
+          "name": "PUT /posts/1 — updated title matches sent value",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.environment.set('post_id', '1');"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response title equals the sent updated value', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data.title).to.eql('Updated Post Title — Automated Test');",
+                  "});",
+                  "",
+                  "pm.test('Response time is below 2000 ms', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json; charset=UTF-8" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"id\": 1,\n    \"title\": \"Updated Post Title — Automated Test\",\n    \"body\": \"This is the updated body content sent by the automated PUT test.\",\n    \"userId\": 1\n}",
+              "options": {
+                "raw": { "language": "json" }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/posts/{{post_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["posts", "{{post_id}}"]
+            },
+            "description": "Full replacement of post 1. Validates status=200 and that the response title reflects the value sent in the request body."
+          }
+        },
+        {
+          "name": "PUT /posts/1 — response id matches route parameter",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.environment.set('post_id', '1');"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response id equals the route parameter (1)', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data.id).to.eql(1);",
+                  "});",
+                  "",
+                  "pm.test('Response body field userId is present', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data).to.have.property('userId');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json; charset=UTF-8" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"id\": 1,\n    \"title\": \"ID Verification PUT Test\",\n    \"body\": \"Verifying that the response id matches the route parameter.\",\n    \"userId\": 1\n}",
+              "options": {
+                "raw": { "language": "json" }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/posts/{{post_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["posts", "{{post_id}}"]
+            },
+            "description": "Verifies that the PUT /posts/1 response contains id=1, confirming the server ties the response to the correct resource."
+          }
+        }
+      ]
+    },
+    {
+      "name": "DELETE Tests",
+      "description": "Tests for DELETE /posts/1 and DELETE /posts/9999 (documented mock behaviour).",
+      "item": [
+        {
+          "name": "DELETE /posts/1 — status 200, empty response body",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.environment.set('post_id', '1');"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response body is an empty JSON object {}', function () {",
+                  "    var data = pm.response.json();",
+                  "    pm.expect(data).to.eql({});",
+                  "});",
+                  "",
+                  "pm.test('Response time is below 2000 ms', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/posts/{{post_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["posts", "{{post_id}}"]
+            },
+            "description": "Deletes post 1. Validates status=200 and an empty JSON object {} response body."
+          }
+        },
+        {
+          "name": "DELETE /posts/9999 — documented mock behaviour (200)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// LIMITATION: JSONPlaceholder returns 200 for all DELETE requests,",
+                  "// even for resource IDs that do not exist.",
+                  "// A production REST API should return 404 Not Found here."
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// DOCUMENTED LIMITATION: JSONPlaceholder returns HTTP 200 for all",
+                  "// DELETE requests, regardless of whether the resource exists.",
+                  "// Production APIs typically return 404 for non-existent resources.",
+                  "pm.test('Status code is 200 (mock always returns 200 for DELETE)', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response body is a JSON object', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('object');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/posts/9999",
+              "host": ["{{base_url}}"],
+              "path": ["posts", "9999"]
+            },
+            "description": "DOCUMENTED LIMITATION — attempts to delete a non-existent post (id=9999). JSONPlaceholder returns 200 for all DELETE calls. A production API should return 404 Not Found."
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://jsonplaceholder.typicode.com",
+      "type": "string",
+      "description": "Root URL for all requests. Overridden at runtime by the environment file."
+    }
+  ]
+}
